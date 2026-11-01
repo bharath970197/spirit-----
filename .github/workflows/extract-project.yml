@@ -1,0 +1,52 @@
+name: Extract project archive
+
+on:
+  push:
+    paths:
+      - '777.zip'
+      - '.github/workflows/extract-project.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract project files
+        run: |
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+
+          archive = Path("777.zip")
+          with zipfile.ZipFile(archive) as z:
+              for item in z.infolist():
+                  if item.is_dir():
+                      continue
+                  name = Path(item.filename)
+                  if name.is_absolute() or ".." in name.parts:
+                      raise SystemExit(f"Unsafe archive path: {item.filename}")
+                  target = Path(".") / name
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  target.write_bytes(z.read(item))
+          PY
+
+      - name: Commit extracted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No extracted file changes."
+            exit 0
+          fi
+          git commit -m "Extract complete project source and assets"
+          git push origin HEAD:main

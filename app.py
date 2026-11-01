@@ -460,7 +460,10 @@ def forbidden(_):
 def not_found(_):
     return render_template("error.html", code=404, message="The page or record could not be found."),404
 
+# Initialize persistent application schema whenever the WSGI server imports this module.
+# Gunicorn imports app.py instead of executing it as __main__.
+init_db()
+seed_accounts()
+
 if __name__ == "__main__":
-    init_db()
-    seed_accounts()
     app.run(debug=True)
